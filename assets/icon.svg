@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="256" cy="256" r="256"/>
+    </clipPath>
+  </defs>
+
+  <circle cx="256" cy="256" r="256" fill="#ffffff"/>
+
+  <g clip-path="url(#circleClip)">
+
+    <!-- Simple green bar -->
+    <rect x="0" y="348" width="512" height="200" fill="#10b981"/>
+
+    <!-- Head -->
+    <circle cx="256" cy="205" r="148" fill="#d4a574"/>
+
+    <!-- Face -->
+    <ellipse cx="256" cy="225" rx="108" ry="94" fill="#e8c99b"/>
+
+    <!-- Ears -->
+    <circle cx="132" cy="104" r="30" fill="#d4a574"/>
+    <circle cx="380" cy="104" r="30" fill="#d4a574"/>
+
+    <!-- Eye patches (dark markings) -->
+    <ellipse cx="204" cy="208" rx="48" ry="46" fill="#8b6342"/>
+
+    <ellipse cx="308" cy="208" rx="48" ry="46" fill="#8b6342"/>
+
+    <!-- Eyes -->
+    <ellipse cx="204" cy="206" rx="40" ry="42" fill="#ffffff"/>
+    <ellipse cx="308" cy="206" rx="40" ry="42" fill="#ffffff"/>
+    <ellipse cx="212" cy="212" rx="24" ry="26" fill="#3d2b1a"/>
+    <ellipse cx="300" cy="212" rx="24" ry="26" fill="#3d2b1a"/>
+    <circle cx="222" cy="200" r="9" fill="#ffffff"/>
+    <circle cx="310" cy="200" r="9" fill="#ffffff"/>
+
+    <!-- Nose -->
+    <ellipse cx="256" cy="262" rx="26" ry="18" fill="#6b4226"/>
+
+
+
+    <!-- Paws on bar -->
+    <ellipse cx="192" cy="348" rx="40" ry="20" fill="#d4a574"/>
+    <ellipse cx="320" cy="348" rx="40" ry="20" fill="#d4a574"/>
+
+  </g>
+
+  <circle cx="256" cy="256" r="253" fill="none" stroke="#e5e7eb" stroke-width="6"/>
+</svg>

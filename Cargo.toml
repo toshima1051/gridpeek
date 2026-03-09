@@ -1,0 +1,29 @@
+[package]
+name = "gridpeek"
+version = "0.3.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.31"
+egui_extras = { version = "0.31", features = ["default"] }
+memmap2 = "0.9"
+memchr = "2.7"
+calamine = "0.26"
+rayon = "1.10"
+regex = { version = "1", default-features = false, features = ["std", "perf-literal"] }
+rfd = "0.15"
+arboard = "3.4"
+encoding_rs = "0.8"
+chardetng = "0.1"
+rust_xlsxwriter = { version = "0.79", default-features = false }
+
+[build-dependencies]
+resvg = "0.45"
+embed-resource = "3"
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
