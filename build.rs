@@ -79,7 +79,7 @@ fn main() {
         std::fs::write(&rc_path, format!("1 ICON \"{}\"", ico_path_str)).unwrap();
 
         // Compile .rc to object using embed-resource
-        embed_resource::compile(&rc_path, embed_resource::NONE);
+        let _ = embed_resource::compile(&rc_path, embed_resource::NONE);
     }
 
     println!("cargo::rerun-if-changed=assets/icon.svg");
