@@ -39,7 +39,17 @@ pub struct CsvLoader {
 }
 
 impl CsvLoader {
+    #[allow(dead_code)]
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::open_with_delimiter(path, None)
+    }
+
+    /// Open a CSV/TSV file with an optional delimiter override.
+    /// If `delimiter` is `None`, the delimiter is auto-detected.
+    pub fn open_with_delimiter<P: AsRef<Path>>(
+        path: P,
+        delimiter: Option<u8>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let file = File::open(path.as_ref())?;
         let metadata = file.metadata()?;
         let file_size = metadata.len();
@@ -58,7 +68,7 @@ impl CsvLoader {
         };
 
         let data = backing.as_bytes();
-        let delimiter = detect_delimiter(data);
+        let delimiter = delimiter.unwrap_or_else(|| detect_delimiter(data));
         let (headers, data_start) = parse_header(data, delimiter);
         let row_offsets = build_line_index_parallel(data, data_start);
 

@@ -35,6 +35,8 @@ pub struct FileTab {
     pub replace_text: String,
     pub goto_visible: bool,
     pub goto_text: String,
+    /// Optional delimiter override for CSV/TSV (None = auto-detect)
+    pub csv_delimiter: Option<u8>,
 }
 
 impl FileTab {
@@ -59,6 +61,7 @@ impl FileTab {
             replace_text: String::new(),
             goto_visible: false,
             goto_text: String::new(),
+            csv_delimiter: None,
         }
     }
 
@@ -88,7 +91,8 @@ impl FileTab {
                 ExcelLoader::open(&path).map(|l| Box::new(l) as Box<dyn DataSource>)
             }
             _ => {
-                CsvLoader::open(&path).map(|l| Box::new(l) as Box<dyn DataSource>)
+                CsvLoader::open_with_delimiter(&path, self.csv_delimiter)
+                    .map(|l| Box::new(l) as Box<dyn DataSource>)
             }
         };
 
@@ -383,6 +387,17 @@ pub enum RowExportMode {
     RowRange,
 }
 
+/// Delimiter choice for opening CSV/TSV files
+#[derive(Clone, Copy, PartialEq)]
+pub enum DelimiterChoice {
+    Auto,
+    Comma,
+    Tab,
+    Semicolon,
+    Pipe,
+    Custom,
+}
+
 /// Export settings dialog state
 pub struct ExportSettings {
     pub show: bool,
@@ -421,6 +436,9 @@ pub struct App {
     active_tab: usize,
     error_msg: Option<String>,
     show_about: bool,
+    show_delimiter_dialog: bool,
+    delimiter_choice: DelimiterChoice,
+    custom_delimiter: String,
     export_settings: ExportSettings,
     notify_rx: mpsc::Receiver<String>,
     notify_tx: mpsc::Sender<String>,
@@ -436,6 +454,9 @@ impl App {
             active_tab: 0,
             error_msg: None,
             show_about: false,
+            show_delimiter_dialog: false,
+            delimiter_choice: DelimiterChoice::Auto,
+            custom_delimiter: String::new(),
             export_settings: ExportSettings::default(),
             notify_rx,
             notify_tx,
@@ -457,7 +478,12 @@ impl App {
     }
 
     fn open_file_in_new_tab(&mut self, path: PathBuf) {
+        self.open_file_in_new_tab_with_delimiter(path, None);
+    }
+
+    fn open_file_in_new_tab_with_delimiter(&mut self, path: PathBuf, delimiter: Option<u8>) {
         let mut tab = FileTab::new();
+        tab.csv_delimiter = delimiter;
         let ext = path
             .extension()
             .and_then(|e| e.to_str())
@@ -469,7 +495,8 @@ impl App {
                 ExcelLoader::open(&path).map(|l| Box::new(l) as Box<dyn DataSource>)
             }
             _ => {
-                CsvLoader::open(&path).map(|l| Box::new(l) as Box<dyn DataSource>)
+                CsvLoader::open_with_delimiter(&path, delimiter)
+                    .map(|l| Box::new(l) as Box<dyn DataSource>)
             }
         };
 
@@ -508,6 +535,25 @@ impl App {
             .pick_file()
         {
             self.open_file_in_new_tab(path);
+        }
+    }
+
+    fn open_file_dialog_with_delimiter(&mut self) {
+        let delimiter = match self.delimiter_choice {
+            DelimiterChoice::Auto => None,
+            DelimiterChoice::Comma => Some(b','),
+            DelimiterChoice::Tab => Some(b'\t'),
+            DelimiterChoice::Semicolon => Some(b';'),
+            DelimiterChoice::Pipe => Some(b'|'),
+            DelimiterChoice::Custom => self.custom_delimiter.chars().next().map(|c| c as u8),
+        };
+
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Data Files", &["csv", "tsv", "txt", "xlsx", "xls", "xlsb", "ods"])
+            .add_filter("All Files", &["*"])
+            .pick_file()
+        {
+            self.open_file_in_new_tab_with_delimiter(path, delimiter);
         }
     }
 
@@ -835,7 +881,7 @@ impl eframe::App for App {
             tab.poll_search_results();
         }
 
-        let dialog_open = self.export_settings.show || self.show_about;
+        let dialog_open = self.export_settings.show || self.show_about || self.show_delimiter_dialog;
 
         let mut open_file = false;
         let mut toggle_search = false;
@@ -885,6 +931,8 @@ impl eframe::App for App {
                 if i.key_pressed(egui::Key::Escape) {
                     if self.export_settings.show {
                         self.export_settings.show = false;
+                    } else if self.show_delimiter_dialog {
+                        self.show_delimiter_dialog = false;
                     } else if self.show_about {
                         self.show_about = false;
                     }
@@ -1063,6 +1111,7 @@ impl eframe::App for App {
             egui::menu::bar(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Open... (Ctrl+O)").clicked() { ui.close_menu(); self.open_file_dialog(); }
+                    if ui.button("Open with Delimiter...").clicked() { ui.close_menu(); self.show_delimiter_dialog = true; }
                     if self.active_tab().is_some_and(|t| t.data.is_some()) {
                         if ui.button("Save (Ctrl+S)").clicked() {
                             ui.close_menu();
@@ -1442,6 +1491,52 @@ impl eframe::App for App {
                 });
             }
         });
+
+        // Delimiter selection dialog
+        if self.show_delimiter_dialog {
+            let mut close_dialog = false;
+            let mut do_open = false;
+
+            egui::Window::new("Open with Delimiter")
+                .resizable(false)
+                .collapsible(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label("Choose delimiter for CSV/TSV files:");
+                    ui.add_space(4.0);
+                    ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Auto, "Auto-detect");
+                    ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Comma, "Comma (,)");
+                    ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Tab, "Tab (\\t)");
+                    ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Semicolon, "Semicolon (;)");
+                    ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Pipe, "Pipe (|)");
+                    ui.horizontal(|ui| {
+                        ui.radio_value(&mut self.delimiter_choice, DelimiterChoice::Custom, "Custom:");
+                        ui.add_enabled(
+                            self.delimiter_choice == DelimiterChoice::Custom,
+                            egui::TextEdit::singleline(&mut self.custom_delimiter)
+                                .desired_width(40.0)
+                                .hint_text("char"),
+                        );
+                    });
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Choose File...").clicked() {
+                            do_open = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            close_dialog = true;
+                        }
+                    });
+                });
+
+            if close_dialog {
+                self.show_delimiter_dialog = false;
+            }
+            if do_open {
+                self.show_delimiter_dialog = false;
+                self.open_file_dialog_with_delimiter();
+            }
+        }
 
         // About dialog
         if self.show_about {
